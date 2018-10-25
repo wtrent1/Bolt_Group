@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 
 class BoltGroup:
-    
+## Data structure issue... you want IC.x after running solver!    
     def __init__(obj):
 ##        if len(sys.argv) < 3:
 ##            Rult = 1
@@ -16,9 +16,8 @@ class BoltGroup:
         obj.Rult = 1
         obj.theta = 0
         obj.Dmax = 0.34
-        obj.rvect = np.array([])
-        obj.Rvect = np.array([])
-        obj.Rxy = np.array([])
+        obj.rvect = []
+        obj.Rvect = []
         
     def centroid(obj):
         global xc, xy, size, CG
@@ -37,10 +36,12 @@ class BoltGroup:
         #some options will go here
         
         global ICo, IC, Pn
-        ICo = CG
-        IC = sp.optimize.root(Perror(obj,xP,yP), ICo, method='LM')
-        #Pn = P(obj,IC)
-        #return Pn
+        ICo = obj.centroid()
+        IC = sp.optimize.root(Perror, ICo, args=(obj,xP,yP,), method='lm')
+        print(IC)
+        Pn = obj.P_IC(IC)
+        print(Pn)
+        return Pn
    
     def BoltForces(obj,IC):
         # Calculate r values
@@ -49,12 +50,19 @@ class BoltGroup:
         ry = np.empty(size)
         obj.rvect = np.empty(size)
         
-        rx = obj.x - IC[0]
-        ry = obj.y - IC[1]
+        ICx = IC[0]
+        ICy = IC[1]
+        
+##      Calculate r values
+        rx = obj.x - ICx
+        ry = obj.y - ICy
         for i in range(size):
             obj.rvect[i] = m.sqrt(rx[i]**2 + ry[i]**2)
+        
+##      Compute delta
         delta = obj.Dmax * (obj.rvect/max(obj.rvect))
-        # Compute strengths of bolts
+        
+##      Compute strengths of bolts
         global Rx, Ry
         obj.Rvect = np.empty(size)
         angle = np.empty(size)
@@ -63,18 +71,20 @@ class BoltGroup:
      
         for i in range(size):
             obj.Rvect[i] = obj.Rult * (1 - m.exp(-10*delta[i]))**0.55
-            # Component breakdown
+            
+##          Component breakdown
             angle[i] = m.atan2(ry[i],rx[i]) + m.pi/2
-
             Rx[i] = m.cos(angle[i])*obj.Rvect[i]
             Ry[i] = m.sin(angle[i])*obj.Rvect[i]
-        obj.Rxy = np.array([Rx,Ry])
         return Rx, Ry
     
-    def P(obj,IC):
-        BoltForces(IC)
-        for i in range(size):
-            P = obj.Rvect
+    def P_IC(obj,IC):
+        obj.BoltForces(IC)
+##        for i in range(size):
+        P = m.sqrt((sum(Rx))**2 + (sum(Ry))**2)
+        return P    
+##            [Rx,Ry] = obj.Bolt_Forces_IC(IC);
+##            P = sqrt(sum(Rx)^2 + sum(Ry)^2);
         
     def M(obj,IC):
         Rvect = BoltForces(IC)
@@ -84,16 +94,39 @@ class BoltGroup:
         plt.scatter(obj.x,obj.y)
         plt.show()
         
-def Perror(obj,xP,yP,*IC):
-    print(IC)
+def Perror(IC,obj,xP,yP):
+    
+    ICx = IC[0]
+    ICy = IC[1]
+    
     BoltGroup.BoltForces(obj,IC)
-    R = m.sqrt((obj.Rvect[0])**2 + (obj.Rvect[1])**2)
+    
+    global R, r
+    R = np.empty(size)
+    r = np.empty(size)
+        
+    for i in range(size):
+        R[i] = m.sqrt(Rx[i]**2 + Ry[i]**2)
+    
+##  Calculate r values
+    rx = obj.x-ICx
+    ry = obj.y-ICy
+    
+    for i in range(size):
+        r[i] = m.sqrt(rx[i]**2 + ry[i]**2)
+    
     a = m.sin(obj.theta)
     b = -m.cos(obj.theta)
     c = m.cos(obj.theta)*yP - m.sin(obj.theta)*xP
-    e = (a*IC[0] + b*IC[1] + c)/m.sqrt(a**2 + b**2)
+    # a=0 b=-1 c=5 IC =5,5 
+    e = (a*ICx + b*ICy + c)/m.sqrt((a)**2 + (b)**2)
     P = sum(obj.rvect*R)/e
-    print(P)
     
-    return np.array([sum(obj.Rxy[0,:]) + P*m.cos(obj.theta),
-                     sum(obj.Rxy[1,:]) + P*m.sin(obj.theta)])
+    errorx = sum(Rx) + P*m.cos(obj.theta)
+    errory = sum(Ry) + P*m.sin(obj.theta)
+##    error =  m.sqrt(errorx**2 + errory**2) 
+    error = np.array([errorx, errory])
+    print(error)
+    print(IC)
+    
+    return error
