@@ -38,8 +38,13 @@ class BoltGroup:
         global ICo, IC, Pn
         ICo = obj.centroid()
         IC = sp.optimize.root(Perror, ICo, args=(obj,xP,yP,), method='lm')
-##        print(IC)
-        Pn = obj.P_IC(IC.x)
+<<<<<<< HEAD
+        print(IC)
+        Pn = obj.P_IC(IC)
+=======
+        print(IC)
+        Pn = obj.P_IC(IC)
+>>>>>>> a0be1650525b8f3c1a592761d2810c0de53c1050
         print(Pn)
         return Pn
    
@@ -126,7 +131,12 @@ def Perror(IC,obj,xP,yP):
     errory = sum(Ry) + P*m.sin(obj.theta)
 ##    error =  m.sqrt(errorx**2 + errory**2) 
     error = np.array([errorx, errory])
+<<<<<<< HEAD
 ##    print(error)
 ##    print(IC)
+=======
+    print(error)
+    print(IC)
+>>>>>>> a0be1650525b8f3c1a592761d2810c0de53c1050
     
     return error
